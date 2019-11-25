@@ -1,5 +1,5 @@
 # efficientdet.pytorch
-unofficial implementation of efficientdet
+unofficial implementation of efficientdet(WIP)
 
 ## tbd
 - voc training
