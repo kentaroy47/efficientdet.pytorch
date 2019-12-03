@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from utils.ssd_model import DBox, Detect
-from BiFPN import BiFPNBlock
+from BiFPN import BiFPN
 
 
 def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
@@ -15,31 +15,26 @@ def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
                              * 4, kernel_size=3, padding=1)]
     conf_layers += [nn.Conv2d(256, bbox_aspect_num[0]
                               * num_classes, kernel_size=3, padding=1)]
-
     # VGGの最終層（source2）に対する畳み込み層
     loc_layers += [nn.Conv2d(256, bbox_aspect_num[1]
                              * 4, kernel_size=3, padding=1)]
     conf_layers += [nn.Conv2d(256, bbox_aspect_num[1]
                               * num_classes, kernel_size=3, padding=1)]
-
     # extraの（source3）に対する畳み込み層
     loc_layers += [nn.Conv2d(256, bbox_aspect_num[2]
                              * 4, kernel_size=3, padding=1)]
     conf_layers += [nn.Conv2d(256, bbox_aspect_num[2]
                               * num_classes, kernel_size=3, padding=1)]
-
     # extraの（source4）に対する畳み込み層
     loc_layers += [nn.Conv2d(256, bbox_aspect_num[3]
                              * 4, kernel_size=3, padding=1)]
     conf_layers += [nn.Conv2d(256, bbox_aspect_num[3]
                               * num_classes, kernel_size=3, padding=1)]
-
     # extraの（source5）に対する畳み込み層
     loc_layers += [nn.Conv2d(256, bbox_aspect_num[4]
                              * 4, kernel_size=3, padding=1)]
     conf_layers += [nn.Conv2d(256, bbox_aspect_num[4]
                               * num_classes, kernel_size=3, padding=1)]
-
     # extraの（source6）に対する畳み込み層
     loc_layers += [nn.Conv2d(256, bbox_aspect_num[5]
                              * 4, kernel_size=3, padding=1)]
@@ -48,7 +43,7 @@ def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
     return nn.ModuleList(loc_layers), nn.ModuleList(conf_layers)
 
 class EfficientDet(nn.Module):
-    def __init__(self, phase, cfg, verbose=False, backbone="efficientnet-b0", BiFPN=True):
+    def __init__(self, phase, cfg, verbose=False, backbone="efficientnet-b0", useBiFPN=True):
         super(EfficientDet, self).__init__()
         # meta-stuff
         self.phase = phase
@@ -71,6 +66,7 @@ class EfficientDet(nn.Module):
         self.layer4 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8],model._blocks[9],model._blocks[10],model._blocks[11])
         self.layer5 = nn.Sequential(model._blocks[12],model._blocks[13],model._blocks[14],model._blocks[15])
         # Bottom-up layers
+        #self.conv5 = nn.Conv2d( 320, 256, kernel_size=1, stride=1, padding=0)
         self.conv6 = nn.Conv2d( 320, 256, kernel_size=3, stride=2, padding=1)
         self.conv7 = nn.Conv2d( 256, 256, kernel_size=3, stride=2, padding=1)
         self.conv8 = nn.Conv2d( 256, 256, kernel_size=3, stride=1, padding=0)
@@ -85,12 +81,12 @@ class EfficientDet(nn.Module):
         # loc, conf layers
         self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
         # FPNs
-        self.usebifpn=BiFPN
+        self.usebifpn=useBiFPN
         if BiFPN:
-            self.BiFPN=BiFPNBlock(64)
+            self.BiFPN=BiFPN(256)
         
     def forward(self, x):
-        # efficientnet layers
+        ######### efficientnet layers ############
         x = self.layer0(x)
         p3 = self.layer2(x) # 37x37       
         p4 = self.layer3(p3) # 18x18       
@@ -98,16 +94,18 @@ class EfficientDet(nn.Module):
         p5 = self.layer5(p5)
         
         if self.verbose:
-            print("layerc3:", c3.size())
-            print("layerc4:", c4.size())
-            print("layerc5:", c5.size())
+            print("layerc3:", p3.size())
+            print("layerc4:", p4.size())
+            print("layerc5:", p5.size())
+            
+        ######## non-efficientnet layers ###########
+        p6 = self.conv6(p5) # 5x5
+        p7 = self.conv7(F.relu(p6)) # 3x3
+        p8 = self.conv8(F.relu(p7)) # 1x1
         
-        # TODO: implement BiFPN
+        ########### implement BiFPN ############
         if not self.usebifpn:
-            # non-efficientnet layers
-            p6 = self.conv6(p5) # 5x5
-            p7 = self.conv7(F.relu(p6)) # 3x3
-            p8 = self.conv8(F.relu(p7)) # 1x1
+            # use FPN
             # Top-down
             p5 = self.toplayer(p5) # 10x10
             p4 = self._upsample_add(p5, self.latlayer1(p4)) # 19x19
@@ -119,8 +117,12 @@ class EfficientDet(nn.Module):
             # make loc and confs.
             sources = [p3, p4, p5, p6, p7, p8]
         else:
-            # BiFPNs
-            sources = [p3, p4, p5, p6, p7, p8]
+            # use BiFPNs
+            # Top-down
+            p5 = self.toplayer(p5) # 10x10
+            p4 = self._upsample_add(p5, self.latlayer1(p4)) # 19x19
+            p3 = self._upsample_add(p4, self.latlayer2(p3)) # 38x38
+            sources = [p3, p4, p5, p6, p7]
             sources = self.BiFPN(sources)
         
         # look at source size
@@ -156,9 +158,6 @@ class EfficientDet(nn.Module):
             return self.detect(output[0], output[1], output[2].to(self.device))
         else:
             return output
-        
-        
-        return x
     
     def _upsample_add(self, x, y):
         '''Upsample and add two feature maps.

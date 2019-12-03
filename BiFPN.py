@@ -1,91 +1,49 @@
-# from https://github.com/Michael-Jing/EfficientDet-pytorch/blob/master/efficientdet_pytorch/BiFPN.py
+# by kentaroy47
 
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-class BiFPNBlock(nn.Module):
-    def __init__(self, W_bifpn):
-        # TODO:
-        # determine the number of in_channels 
-        super().__init__()
-        self.W_bifpn = W_bifpn 
-        self.p6_td_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p6_td_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p5_td_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p5_td_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p4_td_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p4_td_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p3_out_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p3_out_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p4_out_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p4_out_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p4_out_w3 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p5_out_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p5_out_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p5_out_w3 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p6_out_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p6_out_w2 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p6_out_w3 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p7_out_w1 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p7_out_w3 = torch.tensor(1, dtype=torch.float, requires_grad=True)
-        self.p6_td_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p5_td_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p4_td_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p3_out_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p4_out_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p5_out_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p6_out_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-        self.p7_out_conv = nn.Conv2d(in_channels, self.W_bifpn, kernel_size, stride=1, padding=0, dilation=1, groups=in_channels, bias=True, padding_mode='zeros')
-
-    def forward(self, input):
-        epsilon = 0.0001
-        p3, p4, p5, p6, p7 = input 
-        size_of_p3 = p3.shape[2:]
-        size_of_p4 = p4.shape[2:]
-        size_of_p5 = p5.shape[2:]
-        size_of_p6 = p6.shape[2:]
-        size_of_p7 = p7.shape[2:]
-        # I'm not sure if each of the convolution here share weights, 
-        # I'll implement as each convolution has their own weights by now
-        p6_td = self.p6_td_conv((self.p6_td_w1 * p6 + self.p6_td_w2 * resize(p7, size_of_p6)) /
-                                 (self.p6_td_w1 + self.p6_td_w2 + epsilon))
-        p5_td = self.p5_td_conv((self.p5_td_w1 * p5 + self.p5_td_w2 * resize(p6, size_of_p5)) /
-                                  (self.p5_td_w1 + self.p5_td_w2 + epsilon))
-        p4_td = self.p4_td_conv((self.p4_td_w1 * p4 + self.p4_td_w2 * resize(p5, size_of_p4)) /
-                                   (self.p4_td_w1 + self.p4_td_w2 + epsilon))
-        p3_out = self.p3_out_conv((self.p3_out_w1 * p3 + self.p3_out_w2 * resize(p4_td, size_of_p3)) /
-                                    (self.p3_out_w1 + self.p3_out_w2 + epsilon))
-        p4_out = self.p4_out_conv((self.p4_out_w1 * p4 + self.p4_out_w2 * p4_td + self.p4_out_w3 * resize(p3_out, size_of_p4))
-                                / (self.p4_out_w1 + self.p4_out_w2 + self.p4_out_w3 + epsilon))
-        p5_out = self.p5_out_conv((self.p5_out_w1 * p5 + self.p5_out_w2 * p5_td + self.p5_out_w3 * resize(p4_out, size_of_p5))
-                                / (self.p5_out_w1 + self.p5_out_w2 + self.p5_out_w3 + epsilon))
-        p6_out = self.p6_out_conv((self.p6_out_w1 * p6 + self.p6_out_w2 * p6_td + self.p6_out_w3 * resize(p5_out, size_of_p6)) 
-                                    / (self.p6_out_w1 + self.p6_out_w2 + self.p6_out_w3 + epsilon))
-        p7_out = self.p7_out_conv((self.p7_out_w1 * p7 + self.p7_out_w3 * resize(p6_out, size_of_p7)) /
-                                    (self.p7_out_w1 + self.p7_out_w3 + epsilon))
-        return [p3_out, p4_out, p5_out, p6_out, p7_out]
-
 class BiFPN(nn.Module):
+    def __init__(self,
+                num_channels):
+        super(BiFPN, self).__init__()
+        self.num_channels = num_channels
 
-    def __init__(self, compound_coefficient):
-        super().__init__()
-        self.compound_coefficient = compound_coefficient
-        self.body = self.create_body(compound_coefficient)
+    def forward(self, inputs):
+        num_channels = self.num_channels
+        P3_in, P4_in, P5_in, P6_in, P7_in = inputs
+        for input in inputs:
+            print(input.size())
 
-    def create_body(self, compound_coefficient):
-        D_bifpn = compound_coefficient + 2 
-        W_bifpn_dict = {0: 64,
-                      1: 88,
-                      2: 112,
-                      3: 160,
-                      4: 224,
-                      5: 288,
-                      6: 384}
-        return [BiFPNBlock(W_bifpn_dict.get(compound_coefficient)) for _ in range(D_bifpn)]
+        P7_up = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P7_in)
+        scale = (P6_in.size(3)/P7_up.size(3))
+        
+        P6_up = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P6_in+self.Resize(scale_factor=scale)(P7_up))
+        scale = (P5_in.size(3)/P6_up.size(3))
+        P5_up = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P5_in+self.Resize(scale_factor=scale)(P6_up))
+        scale = (P4_in.size(3)/P5_up.size(3))
+        P4_up = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0)(P4_in+self.Resize(scale_factor=scale)(P5_up))
+        scale = (P3_in.size(3)/P4_up.size(3))
+        P3_out = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0)(P3_in+self.Resize(scale_factor=scale)(P4_up))
 
-    def forward(self, input):
-        x = input
-        for block in self.body:
-            x = block.forward(x)
-        return x
+        # fix to downsample by interpolation
+        #print("P6_up scale",scale)
+        P4_out = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P4_in + P4_up+F.interpolate(P3_out, P4_up.size()[2:]))
+        P5_out = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P5_in + P5_up+F.interpolate(P4_out, P5_up.size()[2:]))
+        P6_out = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P6_in + P6_up+F.interpolate(P5_out, P6_up.size()[2:]))
+        P7_out = self.Conv(in_channels=num_channels, out_channels=num_channels, kernel_size=1, stride=1, padding=0, groups=num_channels)(P7_in + P7_up+F.interpolate(P6_out, P7_up.size()[2:]))
+        return P3_out, P4_out, P5_out, P6_out, P7_out
+
+    @staticmethod
+    def Conv(in_channels, out_channels, kernel_size, stride, padding, groups = 1):
+        features = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups),
+            nn.BatchNorm2d(num_features=out_channels),
+            nn.ReLU()
+        )
+        return features 
+    @staticmethod
+    def Resize(scale_factor=2, mode='bilinear'):
+        upsample = nn.Upsample(scale_factor=scale_factor, mode=mode)
+        return upsample
