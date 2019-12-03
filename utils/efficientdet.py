@@ -82,8 +82,11 @@ class EfficientDet(nn.Module):
         self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
         # FPNs
         self.usebifpn=useBiFPN
-        if BiFPN:
+        if useBiFPN:
             self.BiFPN=BiFPN(256)
+            print("use BiFPN")
+        else:
+            print("use FPN")
         
     def forward(self, x):
         ######### efficientnet layers ############

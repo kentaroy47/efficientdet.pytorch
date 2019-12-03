@@ -13,6 +13,5 @@ unofficial implementation of efficientdet(WIP)
 |resnet18|300           |76.5        |         |               |       |
 |resnet50|300           |80.5        |         |               |       |
 |resnet101|300           |           |         |               |       |
-|EfficientnetB0|300           |            |         |               |       |
-|EfficientnetB1|300           |            |         |               |       |
-|EfficientnetB2|300           |           |         |               |       |
+|EfficientnetB0(wo/BiFPN)|300      |77.0       |         |               |       |
+|EfficientnetB0(w/BiFPN) |300      |79.0       |         |               |       |
