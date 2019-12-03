@@ -78,23 +78,23 @@ class EfficientDet(nn.Module):
         self.smooth1 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
         self.smooth2 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)        
         # Lateral layers
-        self.latlayer1 = nn.Conv2d( 192, 256, kernel_size=1, stride=1, padding=0)
-        self.latlayer2 = nn.Conv2d( 80, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer1 = nn.Conv2d( 80, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = nn.Conv2d( 40, 256, kernel_size=1, stride=1, padding=0)
         # loc, conf layers
         self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
         
     def forward(self, x):
         # efficientnet layers
         x = self.layer0(x)
-        #print("layer0:", x.size())
-        x = self.layer2(x)
-        #print("layer1:", x.size())
-        c3 = self.layer3(x)
-        #print("layer2:", c3.size())
-        c4 = self.layer4(c3)
-        #print("layer3:", c4.size())
-        c5 = self.layer5(c4)
-        #print("layer4:", c5.size())
+        c3 = self.layer2(x) # 37x37       
+        c4 = self.layer3(c3) # 18x18       
+        c5 = self.layer4(c4)
+        c5 = self.layer5(c5)
+        
+        if self.verbose:
+            print("layerc3:", c3.size())
+            print("layerc4:", c4.size())
+            print("layerc5:", c5.size())
         
         # TODO: implement BiFPN
         
