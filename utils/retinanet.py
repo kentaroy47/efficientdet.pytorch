@@ -4,9 +4,13 @@ See the paper "Focal Loss for Dense Object Detection" for more details.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from efficientnet_pytorch import EfficientNet
 
 from torch.autograd import Variable
 from utils.ssd_model import DBox, Detect
+import torchvision.models
+
+
 
 class Bottleneck(nn.Module):
     """
@@ -84,7 +88,7 @@ def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
     return nn.ModuleList(loc_layers), nn.ModuleList(conf_layers)
 
 class RetinaFPN(nn.Module):
-    def __init__(self, block, num_blocks, phase, cfg, verbose=False, model="resnet18"):
+    def __init__(self, phase, cfg, verbose=False, model="resnet18"):
         super(RetinaFPN, self).__init__()
         self.in_planes = 64
         
@@ -102,8 +106,8 @@ class RetinaFPN(nn.Module):
         if phase == "inference":
             self.detect = Detect()
         
-        import torchvision.models
-        # define resnet18
+        
+        # define Backbone
         if model == "resnet18":       
             resnet=torchvision.models.resnet18(pretrained=True)     
             #print(resnet)
@@ -124,13 +128,24 @@ class RetinaFPN(nn.Module):
             resnet=torchvision.models.resnet152(pretrained=True)     
             #print(resnet)
             ratio = 4
+        elif model == "efficientnetb0":
+            resnet = EfficientNet.from_pretrained('efficientnet-b0')
+            print(resnet)
+            ratio = 4
             
         ## CNN layers
-        self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
-        self.layer2 = nn.Sequential(resnet.layer1)
-        self.layer3 = nn.Sequential(resnet.layer2)
-        self.layer4 = nn.Sequential(resnet.layer3)
-        self.layer5 = nn.Sequential(resnet.layer4)
+        if "resnet" in model:
+            self.layer0 = nn.Sequential(resnet.conv1, resnet.bn1, resnet.relu, resnet.maxpool)
+            self.layer2 = nn.Sequential(resnet.layer1)
+            self.layer3 = nn.Sequential(resnet.layer2)
+            self.layer4 = nn.Sequential(resnet.layer3)
+            self.layer5 = nn.Sequential(resnet.layer4)
+        elif "efficientnet" in model:
+            self.layer0 = nn.Sequential(resnet._conv_stem, resnet._bn0)
+            self.layer2 = nn.Sequential(resnet._blocks)
+            self.layer3 = nn.Sequential(resnet.layer2)
+            self.layer4 = nn.Sequential(resnet.layer3)
+            self.layer5 = nn.Sequential(resnet.layer4)
 
         # Bottom-up layers
         self.conv6 = nn.Conv2d( 512*ratio, 256, kernel_size=3, stride=2, padding=1)
@@ -202,8 +217,7 @@ class RetinaFPN(nn.Module):
         
         # make lists
         loc = list()
-        conf = list()
-        
+        conf = list()        
         for (x, l, c) in zip(sources, self.loc, self.conf):
             # Permuteは要素の順番を入れ替え
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())

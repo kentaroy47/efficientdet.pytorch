@@ -1,7 +1,9 @@
 # efficientdet.pytorch
 unofficial implementation of efficientdet(WIP)
 
-## tbd
-- voc training
-- coco training
-- predictors, anchors
+see train_efficientdet notebook for VOC training.
+
+- supported efficientnet backbone
+- supported resnet backbone
+- now working on BiFPN implementation
+

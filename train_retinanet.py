@@ -22,6 +22,7 @@ import torch.nn.init as init
 import torch.nn.functional as F
 from torch.autograd import Function
 
+backbone = "resnet50"
 
 # In[2]:
 
@@ -116,7 +117,7 @@ ssd_cfg = {
     'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
 }
 
-net = SSD(Bottleneck, [2,2,2,2], phase="train", cfg=ssd_cfg)
+net = SSD(Bottleneck, [2,2,2,2], phase="train", cfg=ssd_cfg, model=backbone)
 
 # SSDのweightsを設定
 #print("using vgg weights")
