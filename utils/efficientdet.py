@@ -124,6 +124,7 @@ class EfficientDet(nn.Module):
             p3 = self._upsample_add(p4, self.latlayer2(p3)) # 38x38
             sources = [p3, p4, p5, p6, p7]
             sources = self.BiFPN(sources)
+            sources = [sources[0], sources[1], sources[2], sources[3], sources[4], p8]
         
         # look at source size
         if self.verbose:
