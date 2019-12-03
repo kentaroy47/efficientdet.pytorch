@@ -1,7 +1,7 @@
 # efficientdet.pytorch
 unofficial implementation of efficientdet(WIP)
 
-see train_efficientdet notebook for VOC training.
+** please see `train_efficientdet.ipynb` for VOC training. **
 
 - supported efficientnet backbone (B0 for now)
 - supported resnet backbone
