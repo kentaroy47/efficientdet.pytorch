@@ -138,15 +138,19 @@ class SSDPredictShow(nn.Module):
         # SSDで予測
         #self.net.eval()  # ネットワークを推論モードへ
         x = img.unsqueeze(0)  # ミニバッチ化：torch.Size([1, 3, 300, 300])
-
-        detections = self.net(x)
+        
+        with torch.no_grad():
+            detections = self.net(x)
         # detectionsの形は、torch.Size([1, 21, 200, 5])  ※200はtop_kの値
 
         # confidence_levelが基準以上を取り出す
         predict_bbox = []
         pre_dict_label_index = []
         scores = []
-        detections = detections.cpu().detach().numpy()
+        try:
+            detections = detections.cpu().detach().numpy()
+        except:
+            detections = detections.detach().numpy()
 
         # 条件以上の値を抽出
         find_index = np.where(detections[:, 0:, :, 0] >= data_confidence_level)

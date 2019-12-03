@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as F
 from utils.ssd_model import DBox, Detect
+from BiFPN import BiFPNBlock
+
 
 def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
     loc_layers = []
@@ -46,7 +48,7 @@ def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
     return nn.ModuleList(loc_layers), nn.ModuleList(conf_layers)
 
 class EfficientDet(nn.Module):
-    def __init__(self, phase, cfg, verbose=False):
+    def __init__(self, phase, cfg, verbose=False, backbone="efficientnet-b0", BiFPN=True):
         super(EfficientDet, self).__init__()
         # meta-stuff
         self.phase = phase
@@ -62,7 +64,7 @@ class EfficientDet(nn.Module):
         ratio = 1
         
         # define backbone
-        model = EfficientNet.from_pretrained('efficientnet-b0')
+        model = EfficientNet.from_pretrained(backbone)
         self.layer0 = nn.Sequential(model._conv_stem, model._bn0)
         self.layer2 = nn.Sequential(model._blocks[0],model._blocks[1],model._blocks[2],model._blocks[3])
         self.layer3 = nn.Sequential(model._blocks[4],model._blocks[5])
@@ -82,14 +84,18 @@ class EfficientDet(nn.Module):
         self.latlayer2 = nn.Conv2d( 40, 256, kernel_size=1, stride=1, padding=0)
         # loc, conf layers
         self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
+        # FPNs
+        self.usebifpn=BiFPN
+        if BiFPN:
+            self.BiFPN=BiFPNBlock(64)
         
     def forward(self, x):
         # efficientnet layers
         x = self.layer0(x)
-        c3 = self.layer2(x) # 37x37       
-        c4 = self.layer3(c3) # 18x18       
-        c5 = self.layer4(c4)
-        c5 = self.layer5(c5)
+        p3 = self.layer2(x) # 37x37       
+        p4 = self.layer3(p3) # 18x18       
+        p5 = self.layer4(p4)
+        p5 = self.layer5(p5)
         
         if self.verbose:
             print("layerc3:", c3.size())
@@ -97,21 +103,25 @@ class EfficientDet(nn.Module):
             print("layerc5:", c5.size())
         
         # TODO: implement BiFPN
-        
-        # non-efficientnet layers
-        p6 = self.conv6(c5) # 5x5
-        p7 = self.conv7(F.relu(p6)) # 3x3
-        p8 = self.conv8(F.relu(p7)) # 1x1
-        # Top-down
-        p5 = self.toplayer(c5) # 10x10
-        p4 = self._upsample_add(p5, self.latlayer1(c4)) # 19x19
-        p3 = self._upsample_add(p4, self.latlayer2(c3)) # 38x38
-        # Smooth
-        p4 = self.smooth1(p4)
-        p3 = self.smooth2(p3)
-        
-        # make loc and confs.
-        sources = [p3, p4, p5, p6, p7, p8]
+        if not self.usebifpn:
+            # non-efficientnet layers
+            p6 = self.conv6(p5) # 5x5
+            p7 = self.conv7(F.relu(p6)) # 3x3
+            p8 = self.conv8(F.relu(p7)) # 1x1
+            # Top-down
+            p5 = self.toplayer(p5) # 10x10
+            p4 = self._upsample_add(p5, self.latlayer1(p4)) # 19x19
+            p3 = self._upsample_add(p4, self.latlayer2(p3)) # 38x38
+            # Smooth
+            p4 = self.smooth1(p4)
+            p3 = self.smooth2(p3)
+
+            # make loc and confs.
+            sources = [p3, p4, p5, p6, p7, p8]
+        else:
+            # BiFPNs
+            sources = [p3, p4, p5, p6, p7, p8]
+            sources = self.BiFPN(sources)
         
         # look at source size
         if self.verbose:
