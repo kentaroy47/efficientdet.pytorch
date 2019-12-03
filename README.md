@@ -1,11 +1,14 @@
 # efficientdet.pytorch
-unofficial implementation of efficientdet(WIP)
+unofficial implementation of efficientdet
 
 **please see `train_efficientdet.ipynb` for VOC training.**
 
 - supported efficientnet backbone (B0 for now)
-- supported resnet backbone
-- now working on BiFPN implementation
+- supported resnet backbone.
+- supports BiFPN.
+- supports VOC and COCO training.
+
+Now training models.. Plz wait.
 
 |*backbone*|*resolution*|*VOCmAP*    |*COCOmAP*|*Inference[ms]*|*model*|
 |:------:|:------------:|:----------:|:-------:|:-------------:|:-----:|
