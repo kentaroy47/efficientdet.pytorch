@@ -107,9 +107,28 @@ class Anno_xml2list(object):
 # フォルダ「utils」にあるdata_augumentation.pyからimport。
 # 入力画像の前処理をするクラス
 from utils.data_augumentation import Compose, ConvertFromInts, ToAbsoluteCoords, PhotometricDistort, Expand, RandomSampleCrop, RandomMirror, ToPercentCoords, Resize, SubtractMeans
+from torchvision import transforms
+
+class Normalize(object):
+    def __init__(self):
+        self.mean=[0.485, 0.456, 0.406]
+        self.std=[0.229, 0.224, 0.225]
+        self.norm = transforms.Normalize(self.mean, self.std)
+    def __call__(self, image, boxes=None, labels=None):
+        image = image.astype(np.float32)/255
+        axis = (0,1)
+        #print("mean before norm", np.mean(image.astype(np.float32), axis=axis))
+        #print("std before norm", np.std(image.astype(np.float32), axis=axis))
+        image -= self.mean
+        image /= self.std
+        #print("mean after norm", np.mean(image.astype(np.float32), axis=axis))
+        #print("std after norm", np.std(image.astype(np.float32), axis=axis))
+        return image, boxes, labels
 
 class DatasetTransform():
     def __init__(self, input_size, color_mean):
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
         self.data_transform = {
         "train": Compose([
             ConvertFromInts(),  # intをfloat32に変換
@@ -120,18 +139,41 @@ class DatasetTransform():
             RandomMirror(),  # 画像を反転させる
             ToPercentCoords(),  # アノテーションデータを0-1に規格化
             Resize(input_size),  # 画像サイズをinput_size×input_sizeに変形
-            SubtractMeans(color_mean)  # BGRの色の平均値を引き算
+            Normalize() # Preprocess for resnets
         ]),
         "val": Compose([
             ConvertFromInts(),  # intをfloatに変換
             Resize(input_size),  # 画像サイズをinput_size×input_sizeに変形
-            SubtractMeans(color_mean)  # BGRの色の平均値を引き算
+            Normalize()
         ])  
         }
     def __call__(self, img, phase, boxes, labels):
         return self.data_transform[phase](img, boxes, labels)
             
-        
+class COCODatasetTransform():
+    def __init__(self, input_size, color_mean):
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+        self.data_transform = {
+        "train": Compose([
+            ConvertFromInts(),  # intをfloat32に変換
+            ToAbsoluteCoords(),  # アノテーションデータの規格化を戻す
+            PhotometricDistort(),  # 画像の色調などをランダムに変化
+            #Expand(color_mean),  # 画像のキャンバスを広げる
+            #RandomSampleCrop(),  # 画像内の部分をランダムに抜き出す
+            RandomMirror(),  # 画像を反転させる
+            ToPercentCoords(),  # アノテーションデータを0-1に規格化
+            Resize(input_size),  # 画像サイズをinput_size×input_sizeに変形
+            Normalize() # Preprocess for resnets
+        ]),
+        "val": Compose([
+            ConvertFromInts(),  # intをfloatに変換
+            Resize(input_size),  # 画像サイズをinput_size×input_sizeに変形
+            Normalize()
+        ])  
+        }
+    def __call__(self, img, phase, boxes, labels):
+        return self.data_transform[phase](img, boxes, labels)        
 
 
 # In[7]:

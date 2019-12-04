@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import cv2  # OpenCVライブラリ
 import torch
 import time
-from utils.ssd_model import DataTransform
+from utils.dataset import DatasetTransform as DataTransform
 import torch.nn as nn
 
 class SSDPredictShow(nn.Module):

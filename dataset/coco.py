@@ -73,7 +73,6 @@ class COCOAnnotationTransform(object):
 
         return res  # [[xmin, ymin, xmax, ymax, label_idx], ... ]
 
-
 class COCODetection(data.Dataset):
     """`MS Coco Detection <http://mscoco.org/dataset/#detections-challenge2016>`_ Dataset.
     Args:
@@ -85,7 +84,7 @@ class COCODetection(data.Dataset):
         in the target (bbox) and transforms it.
     """
 
-    def __init__(self, root, image_set='trainval35k', transform=None,
+    def __init__(self, root, image_set='trainval35k', transform=None, phase="train",
                  target_transform=COCOAnnotationTransform(), dataset_name='MS COCO'):
         sys.path.append(osp.join(root, COCO_API))
         from pycocotools.coco import COCO
@@ -96,6 +95,7 @@ class COCODetection(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.name = dataset_name
+        self.phase = phase
 
     def __getitem__(self, index):
         """
@@ -126,14 +126,14 @@ class COCODetection(data.Dataset):
         target = self.coco.loadAnns(ann_ids)
         path = osp.join(self.root, self.coco.loadImgs(img_id)[0]['file_name'])
         assert osp.exists(path), 'Image path does not exist: {}'.format(path)
-        img = cv2.imread(osp.join(self.root, path))
+        #print(osp.join(self.root, path))
+        img = cv2.imread(path)
         height, width, _ = img.shape
         if self.target_transform is not None:
             target = self.target_transform(target, width, height)
         if self.transform is not None:
             target = np.array(target)
-            img, boxes, labels = self.transform(img, target[:, :4],
-                                                target[:, 4])
+            img, boxes, labels = self.transform(img, self.phase, target[:, :4], target[:, 4])
             # to rgb
             img = img[:, :, (2, 1, 0)]
 
