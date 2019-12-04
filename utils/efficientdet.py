@@ -83,7 +83,8 @@ class EfficientDet(nn.Module):
         # FPNs
         self.usebifpn=useBiFPN
         if useBiFPN:
-            self.BiFPN=BiFPN(256)
+            self.BiFPN1=BiFPN(256)
+            self.BiFPN2=BiFPN(256)
             print("use BiFPN")
         else:
             print("use FPN")
@@ -116,7 +117,6 @@ class EfficientDet(nn.Module):
             # Smooth
             p4 = self.smooth1(p4)
             p3 = self.smooth2(p3)
-
             # make loc and confs.
             sources = [p3, p4, p5, p6, p7, p8]
         else:
@@ -126,7 +126,10 @@ class EfficientDet(nn.Module):
             p4 = self._upsample_add(p5, self.latlayer1(p4)) # 19x19
             p3 = self._upsample_add(p4, self.latlayer2(p3)) # 38x38
             sources = [p3, p4, p5, p6, p7]
-            sources = self.BiFPN(sources)
+            # 2x BiFPNs for D0
+            sources = self.BiFPN1(sources)
+            sources = self.BiFPN2(sources)
+            # wrap outputs.
             sources = [sources[0], sources[1], sources[2], sources[3], sources[4], p8]
         
         # look at source size
