@@ -10,6 +10,8 @@ unofficial implementation of efficientdet
 
 ![configs](https://miro.medium.com/max/678/1*hGTQY4XHbAtPch7nLEp12g.png)
 
+![perf](https://miro.medium.com/max/1922/1*QVVzgKBg7P4nbKHcnO1uKQ.png)
+
 Now training models.. Plz wait.
 
 |*backbone*|*resolution*|*VOCmAP*    |*COCOmAP*|*Inference[ms]*|*model*|
