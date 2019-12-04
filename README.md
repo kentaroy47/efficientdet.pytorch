@@ -8,6 +8,8 @@ unofficial implementation of efficientdet
 - supports BiFPN.
 - supports VOC and COCO training.
 
+![configs](https://miro.medium.com/max/678/1*hGTQY4XHbAtPch7nLEp12g.png)
+
 Now training models.. Plz wait.
 
 |*backbone*|*resolution*|*VOCmAP*    |*COCOmAP*|*Inference[ms]*|*model*|
