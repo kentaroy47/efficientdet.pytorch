@@ -6,39 +6,39 @@ from utils.ssd_model import DBox, Detect
 from BiFPN import BiFPN
 
 
-def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
+def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4], outc=256):
     loc_layers = []
     conf_layers = []
 
     # VGGの22層目、conv4_3（source1）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[0]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[0]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[0]
-                              * num_classes, kernel_size=3, padding=1)]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[0]
+                              *num_classes, kernel_size=3, padding=1)]
     # VGGの最終層（source2）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[1]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[1]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[1]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[1]
                               * num_classes, kernel_size=3, padding=1)]
     # extraの（source3）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[2]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[2]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[2]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[2]
                               * num_classes, kernel_size=3, padding=1)]
     # extraの（source4）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[3]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[3]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[3]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[3]
                               * num_classes, kernel_size=3, padding=1)]
     # extraの（source5）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[4]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[4]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[4]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[4]
                               * num_classes, kernel_size=3, padding=1)]
     # extraの（source6）に対する畳み込み層
-    loc_layers += [nn.Conv2d(256, bbox_aspect_num[5]
+    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[5]
                              * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(256, bbox_aspect_num[5]
+    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[5]
                               * num_classes, kernel_size=3, padding=1)]
     return nn.ModuleList(loc_layers), nn.ModuleList(conf_layers)
 
@@ -60,31 +60,44 @@ class EfficientDet(nn.Module):
         
         # define backbone
         model = EfficientNet.from_pretrained(backbone)
+        print(model)
+        
         self.layer0 = nn.Sequential(model._conv_stem, model._bn0)
-        self.layer2 = nn.Sequential(model._blocks[0],model._blocks[1],model._blocks[2],model._blocks[3])
-        self.layer3 = nn.Sequential(model._blocks[4],model._blocks[5])
-        self.layer4 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8],model._blocks[9],model._blocks[10],model._blocks[11])
-        self.layer5 = nn.Sequential(model._blocks[12],model._blocks[13],model._blocks[14],model._blocks[15])
+        if backbone == "efficientnet-b0":
+            outc = 64
+            self.layer2 = nn.Sequential(model._blocks[0],model._blocks[1],model._blocks[2],model._blocks[3])
+            self.layer3 = nn.Sequential(model._blocks[4],model._blocks[5])
+            self.layer4 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8],model._blocks[9],model._blocks[10],model._blocks[11])
+            self.layer5 = nn.Sequential(model._blocks[12],model._blocks[13],model._blocks[14],model._blocks[15])
+        elif backbone == "efficientnet-b2":
+            outc = 112
+            self.layer2 = nn.Sequential(model._blocks[0],model._blocks[1],model._blocks[2],model._blocks[3],model._blocks[4],model._blocks[5])
+            self.layer3 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8])
+            self.layer4 = nn.Sequential(model._blocks[9],model._blocks[10],model._blocks[11])
+            self.layer5 = nn.Sequential(model._blocks[12],model._blocks[13],model._blocks[14],model._blocks[15],model._blocks[16],model._blocks[17],model._blocks[18])
         # Bottom-up layers
-        #self.conv5 = nn.Conv2d( 320, 256, kernel_size=1, stride=1, padding=0)
-        self.conv6 = nn.Conv2d( 320, 256, kernel_size=3, stride=2, padding=1)
-        self.conv7 = nn.Conv2d( 256, 256, kernel_size=3, stride=2, padding=1)
-        self.conv8 = nn.Conv2d( 256, 256, kernel_size=3, stride=1, padding=0)
+        #self.conv5 = nn.Conv2d( 320, 256, kernel_size=1, stride=1, padding=0)  
+        print(self.layer5[-1]._project_conv.weight.size()[0])
+        self.conv6 = nn.Conv2d( self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=3, stride=2, padding=1)
+        self.conv7 = nn.Conv2d( outc, outc, kernel_size=3, stride=2, padding=1)
+        self.conv8 = nn.Conv2d( outc, outc, kernel_size=3, stride=1, padding=0)
         # Top layer
-        self.toplayer = nn.Conv2d(320, 256, kernel_size=1, stride=1, padding=0)  # Reduce channels
+        self.toplayer = nn.Conv2d(self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)  # Reduce channels
         # Smooth layers
-        self.smooth1 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
-        self.smooth2 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)        
+        self.smooth1 = nn.Conv2d(outc, outc, kernel_size=3, stride=1, padding=1)
+        self.smooth2 = nn.Conv2d(outc, outc, kernel_size=3, stride=1, padding=1)        
         # Lateral layers
-        self.latlayer1 = nn.Conv2d( 80, 256, kernel_size=1, stride=1, padding=0)
-        self.latlayer2 = nn.Conv2d( 40, 256, kernel_size=1, stride=1, padding=0)
+        self.latlayer1 = nn.Conv2d( self.layer3[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = nn.Conv2d( self.layer2[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
         # loc, conf layers
-        self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
+        self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"], outc = outc)
         # FPNs
         self.usebifpn=useBiFPN
         if useBiFPN:
-            self.BiFPN1=BiFPN(256)
-            self.BiFPN2=BiFPN(256)
+            if backbone == "efficientnet-b0":
+                self.BiFPN = nn.Sequential(BiFPN(outc), BiFPN(outc))
+            elif backbone == "efficientnet-b2":
+                self.BiFPN = nn.Sequential(BiFPN(outc), BiFPN(outc), BiFPN(outc), BiFPN(outc))
             print("use BiFPN")
         else:
             print("use FPN")
@@ -127,8 +140,7 @@ class EfficientDet(nn.Module):
             p3 = self._upsample_add(p4, self.latlayer2(p3)) # 38x38
             sources = [p3, p4, p5, p6, p7]
             # 2x BiFPNs for D0
-            sources = self.BiFPN1(sources)
-            sources = self.BiFPN2(sources)
+            sources = self.BiFPN(sources)
             # wrap outputs.
             sources = [sources[0], sources[1], sources[2], sources[3], sources[4], p8]
         
