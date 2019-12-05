@@ -816,11 +816,12 @@ class SSD(nn.Module):
 class MultiBoxLoss(nn.Module):
     """SSDの損失関数のクラスです。"""
 
-    def __init__(self, jaccard_thresh=0.5, neg_pos=3, device='cpu'):
+    def __init__(self, jaccard_thresh=0.5, neg_pos=3, device='cpu', half=False):
         super(MultiBoxLoss, self).__init__()
         self.jaccard_thresh = jaccard_thresh  # 0.5 関数matchのjaccard係数の閾値
         self.negpos_ratio = neg_pos  # 3:1 Hard Negative Miningの負と正の比率
         self.device = device  # CPUとGPUのいずれで計算するのか
+        self.half = half
 
     def forward(self, predictions, targets):
         """
@@ -878,7 +879,7 @@ class MultiBoxLoss(nn.Module):
             variance = [0.1, 0.2]
             # このvarianceはDBoxからBBoxに補正計算する際に使用する式の係数です
             match(self.jaccard_thresh, truths, dbox,
-                  variance, labels, loc_t, conf_t_label, idx)
+                  variance, labels, loc_t, conf_t_label, idx, half=self.half)
 
         # ----------
         # 位置の損失：loss_lを計算
@@ -895,7 +896,10 @@ class MultiBoxLoss(nn.Module):
         loc_t = loc_t[pos_idx].view(-1, 4)
 
         # 物体を発見したPositive DBoxのオフセット情報loc_tの損失（誤差）を計算
-        loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
+        if not self.half:
+            loss_l = F.smooth_l1_loss(loc_p, loc_t, reduction='sum')
+        else:
+            loss_l = F.smooth_l1_loss(loc_p, loc_t.half(), reduction='sum')
 
         # ----------
         # クラス予測の損失：loss_cを計算
