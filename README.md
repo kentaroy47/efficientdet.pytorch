@@ -1,6 +1,9 @@
 # efficientdet.pytorch
 unofficial implementation of efficientdet
 
+## requirements
+`pip install --upgrade efficientnet-pytorch`
+
 **please see `train_efficientdet.ipynb` for VOC training.**
 
 - supported efficientnet backbone (B0 for now)
