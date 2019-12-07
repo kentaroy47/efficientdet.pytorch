@@ -64,7 +64,7 @@ class EfficientDet(nn.Module):
         
         self.layer0 = nn.Sequential(model._conv_stem, model._bn0)
         if backbone == "efficientnet-b0":
-            outc = 64
+            outc = 64 # scaled channels for BiFPNs
             self.layer2 = nn.Sequential(model._blocks[0],model._blocks[1],model._blocks[2],model._blocks[3])
             self.layer3 = nn.Sequential(model._blocks[4],model._blocks[5])
             self.layer4 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8],model._blocks[9],model._blocks[10],model._blocks[11])
@@ -75,6 +75,11 @@ class EfficientDet(nn.Module):
             self.layer3 = nn.Sequential(model._blocks[6],model._blocks[7],model._blocks[8])
             self.layer4 = nn.Sequential(model._blocks[9],model._blocks[10],model._blocks[11])
             self.layer5 = nn.Sequential(model._blocks[12],model._blocks[13],model._blocks[14],model._blocks[15],model._blocks[16],model._blocks[17],model._blocks[18])
+            
+        # using scaled BiFPN channels did not work in my implementation.
+        # here, we use outc=256 for all settings.
+        outc = 256
+            
         # Bottom-up layers
         #self.conv5 = nn.Conv2d( 320, 256, kernel_size=1, stride=1, padding=0)  
         print(self.layer5[-1]._project_conv.weight.size()[0])

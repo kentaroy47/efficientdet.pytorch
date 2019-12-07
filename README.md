@@ -17,8 +17,8 @@ unofficial implementation of efficientdet
 
 Now training models.. Plz wait.
 
-|*backbone*|*resolution*|*VOCmAP*    |*COCOmAP*|*Inference[ms]*|*model*|
-|:------:|:------------:|:----------:|:-------:|:-------------:|:-----:|
+|*backbone*              |*resolution*|*VOCmAP*    |*COCOmAP*|*Inference[ms]*|*model*|
+|:------:                |:------------:|:----------:|:-------:|:-------------:|:-----:|
 |EfficientnetB0(wo/BiFPN)|512      |77.0       |TBD         |               |       |
 |EfficientnetB0(w/BiFPN) |512      |79.0       |TBD         |               |       |
 |EfficientnetB2(wo/BiFPN)|768      |TBD       |TBD         |               |       |
