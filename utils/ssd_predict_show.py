@@ -74,7 +74,8 @@ class SSDPredictShow(nn.Module):
             img, phase, "", "")  # アノテーションが存在しないので""にする。
         img = torch.from_numpy(
             img_transformed[:, :, (2, 1, 0)]).permute(2, 0, 1).to(self.device)
-
+        print(img.size())
+        
         # SSDで予測
         #self.net.eval()  # ネットワークを推論モードへ
         x = img.unsqueeze(0)  # ミニバッチ化：torch.Size([1, 3, 300, 300])

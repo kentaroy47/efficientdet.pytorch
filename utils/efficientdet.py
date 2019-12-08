@@ -6,40 +6,15 @@ from utils.ssd_model import DBox, Detect
 from BiFPN import BiFPN
 
 
-def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4], outc=256):
+def make_loc_conf(num_classes=21, bbox_aspect_num=[4, 6, 6, 6, 4, 4]):
     loc_layers = []
     conf_layers = []
-
-    # VGGの22層目、conv4_3（source1）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[0]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[0]
-                              *num_classes, kernel_size=3, padding=1)]
-    # VGGの最終層（source2）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[1]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[1]
-                              * num_classes, kernel_size=3, padding=1)]
-    # extraの（source3）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[2]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[2]
-                              * num_classes, kernel_size=3, padding=1)]
-    # extraの（source4）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[3]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[3]
-                              * num_classes, kernel_size=3, padding=1)]
-    # extraの（source5）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[4]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[4]
-                              * num_classes, kernel_size=3, padding=1)]
-    # extraの（source6）に対する畳み込み層
-    loc_layers += [nn.Conv2d(outc, bbox_aspect_num[5]
-                             * 4, kernel_size=3, padding=1)]
-    conf_layers += [nn.Conv2d(outc, bbox_aspect_num[5]
-                              * num_classes, kernel_size=3, padding=1)]
+    for i in range(6):
+        loc_layers += [nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256, eps=1e-4, momentum=0.997), nn.ReLU(inplace=True),
+                       nn.Conv2d(256, bbox_aspect_num[i]* 4, kernel_size=3, padding=1))]
+        conf_layers += [nn.Sequential(nn.Conv2d(256, 256, kernel_size=3, padding=1), nn.BatchNorm2d(256, eps=1e-4, momentum=0.997), nn.ReLU(inplace=True),
+                       nn.Conv2d(256, bbox_aspect_num[i]* num_classes, kernel_size=3, padding=1))]
+    
     return nn.ModuleList(loc_layers), nn.ModuleList(conf_layers)
 
 class EfficientDet(nn.Module):
@@ -60,7 +35,7 @@ class EfficientDet(nn.Module):
         
         # define backbone
         model = EfficientNet.from_pretrained(backbone)
-        print(model)
+        #print(model)
         
         self.layer0 = nn.Sequential(model._conv_stem, model._bn0)
         if backbone == "efficientnet-b0":
@@ -83,19 +58,19 @@ class EfficientDet(nn.Module):
         # Bottom-up layers
         #self.conv5 = nn.Conv2d( 320, 256, kernel_size=1, stride=1, padding=0)  
         print(self.layer5[-1]._project_conv.weight.size()[0])
-        self.conv6 = nn.Conv2d( self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=3, stride=2, padding=1)
-        self.conv7 = nn.Conv2d( outc, outc, kernel_size=3, stride=2, padding=1)
-        self.conv8 = nn.Conv2d( outc, outc, kernel_size=3, stride=1, padding=0)
+        self.conv6 = self.Conv( self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=3, stride=2, padding=1)
+        self.conv7 = self.Conv( outc, outc, kernel_size=3, stride=2, padding=1)
+        self.conv8 = self.Conv( outc, outc, kernel_size=3, stride=1, padding=0)
         # Top layer
-        self.toplayer = nn.Conv2d(self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)  # Reduce channels
+        self.toplayer = self.Conv(self.layer5[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)  # Reduce channels
         # Smooth layers
-        self.smooth1 = nn.Conv2d(outc, outc, kernel_size=3, stride=1, padding=1)
-        self.smooth2 = nn.Conv2d(outc, outc, kernel_size=3, stride=1, padding=1)        
+        self.smooth1 = self.Conv(outc, outc, kernel_size=3, stride=1, padding=1)
+        self.smooth2 = self.Conv(outc, outc, kernel_size=3, stride=1, padding=1)        
         # Lateral layers
-        self.latlayer1 = nn.Conv2d( self.layer3[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
-        self.latlayer2 = nn.Conv2d( self.layer2[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
+        self.latlayer1 = self.Conv( self.layer3[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
+        self.latlayer2 = self.Conv( self.layer2[-1]._project_conv.weight.size()[0], outc, kernel_size=1, stride=1, padding=0)
         # loc, conf layers
-        self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"], outc = outc)
+        self.loc, self.conf = make_loc_conf(self.num_classes, cfg["bbox_aspect_num"])
         # FPNs
         self.usebifpn=useBiFPN
         if useBiFPN:
@@ -122,8 +97,8 @@ class EfficientDet(nn.Module):
             
         ######## non-efficientnet layers ###########
         p6 = self.conv6(p5) # 5x5
-        p7 = self.conv7(F.relu(p6)) # 3x3
-        p8 = self.conv8(F.relu(p7)) # 1x1
+        p7 = self.conv7(p6) # 3x3
+        p8 = self.conv8(p7) # 1x1
         
         ########### implement BiFPN ############
         if not self.usebifpn:
@@ -158,6 +133,7 @@ class EfficientDet(nn.Module):
         loc = list()
         conf = list()        
         for (x, l, c) in zip(sources, self.loc, self.conf):
+            #print(l)
             # Permuteは要素の順番を入れ替え
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
             conf.append(c(x).permute(0, 2, 3, 1).contiguous())
@@ -182,6 +158,15 @@ class EfficientDet(nn.Module):
             return self.detect(output[0], output[1], output[2].to(self.device))
         else:
             return output
+    
+    @staticmethod
+    def Conv(in_channels, out_channels, kernel_size, stride, padding, groups=1):
+        features = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups),
+            nn.BatchNorm2d(num_features=out_channels, eps=1e-4, momentum=0.997),
+            nn.ReLU(inplace=True)
+        )
+        return features 
     
     def _upsample_add(self, x, y):
         '''Upsample and add two feature maps.
