@@ -1,15 +1,23 @@
 # efficientdet.pytorch
 unofficial implementation of efficientdet
 
-## requirements
-`pip install --upgrade efficientnet-pytorch`
-
-**please see `train_efficientdet.ipynb` for VOC training.**
-
 - supported efficientnet backbone (B0 for now)
 - supported resnet backbone.
 - supports BiFPN.
 - supports VOC and COCO training.
+
+## requirements
+`pip install --upgrade efficientnet-pytorch`
+
+## PASCAL-VOC training
+- see `train_efficientdet.ipynb`
+- see `eval.ipynb` for evaluation
+
+## COCO training
+- see `train_efficientdet.ipynb` and configure MS-COCO dataset.
+
+## FP16 training
+- see `train_fp16_apex.ipynb`
 
 ![configs](https://miro.medium.com/max/678/1*hGTQY4XHbAtPch7nLEp12g.png)
 
