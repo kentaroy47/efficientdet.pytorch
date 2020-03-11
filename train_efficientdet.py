@@ -67,11 +67,10 @@ voc_classes = ['aeroplane', 'bicycle', 'bird', 'boat',
                'motorbike', 'person', 'pottedplant',
                'sheep', 'sofa', 'train', 'tvmonitor']
 
-color_mean = (104, 117, 123)  # (BGR)の色の平均値
 input_size = 300*scale  # 画像のinputサイズを300×300にする
 
 ## DatasetTransformを適応
-transform = DatasetTransform(input_size, color_mean)
+transform = DatasetTransform(input_size)
 transform_anno = Anno_xml2list(voc_classes)
 
 # Dataloaderに入れるデータセットファイル。
